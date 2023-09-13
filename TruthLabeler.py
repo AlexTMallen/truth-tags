@@ -13,16 +13,18 @@ import time
 
 
 SYSTEM_PROMPT = \
-"""You are an epistemically modest, and wise reviewer who is extraordinarily vigilant about getting facts right. You choose a good mix of options, and otherwise are well-calibrated, usually avoiding extreme options."""
+"""You are an epistemically modest, and wise reviewer who is extraordinarily vigilant about getting facts right. You choose a good mix of options, and otherwise are well-calibrated, usually avoiding extreme options. You often say you are uncertain, and are careful and deliberate about when you say something is true."""
 OPTIONS = ["N/A", "Determinable - Certainly True", "Determinable - True", "Determinable - Uncertain", "Determinable - False", "Determinable - Certainly False"]
 PROMPT_TEMPLATE = \
 """### TRANSCRIPT OF UNKNOWN FACTUAL ACCURACY ###
 <TRANSCRIPT>
 ###
 
-First, decide whether each statement can even be given an accuracy label, writing "Determinable" if it can, and "N/A" if the statement doesn't make any claims that can be judged on their accuracy. Then, if the statement is "Determinable",  rate the extent to which it is true, accurate, and not misleading. Your rating must be one of <RATINGS>. Ratings should be based on the quality of the new information introduced in a statement, and if anything in the statement is incorrect or misleading, the statement is considered incorrect.
+First, decide whether each marked statement can be given an accuracy label, writing "Determinable" if it can, and "N/A" if the statement doesn't make any claims that can be judged on their accuracy. Subjective statements, commands, and code are not determinable, unless the assistant is making a descriptive statement about them or their primary purpose is to inform. Then, if the statement is "Determinable",  rate the extent to which it is factually accurate based on the ground truth information provided. Your rating must be one of <RATINGS>. Ratings should be based on the quality of the new information introduced in a statement, and if anything in the statement is incorrect or misleading, the statement is considered incorrect.
 
-Fill in the following list with your rating for each of the statements marked, without any explanations or anything other than the requested completions. If a Wikipedia excerpt would be helpful for you to rate the accuracy of the transcript, indicate so with a "Yes" in the field provided, otherwise "No". Only use Wikipedia in cases where you are unfamiliar with the subject.
+The correct answer to the user's question according to reliable sources is <|CORRECT_ANSWER|>. If the assistant does not answer this way, it is incorrect.
+
+Fill in the following list with your rating for each of the statements marked, without any explanations or anything other than the requested completions.
 
 <SCORE_LIST>
 Wikipedia cross-check needed?"""
@@ -97,13 +99,14 @@ class TruthLabeler:
         return p
 
     @staticmethod
-    def make_input(annotated_transcript, retrieved_text=None):
+    def make_input(annotated_transcript, correct_answer, retrieved_text=None):
         pattern = re.compile(r"\[\[(\d+)\]\]")  # find all annotations
         ann_count = len(pattern.findall(annotated_transcript))
             
         score_list = "\n".join(SCORE_LIST_TEMPLATE.format(i) for i in range(1, ann_count + 1))
         template = RETRIEVAL_PROMPT_TEMPLATE if retrieved_text else PROMPT_TEMPLATE
         input = template.replace("<SCORE_LIST>", score_list)
+        input = input.replace("<CORRECT_ANSWER>", correct_answer)
         input = input.replace("<TRANSCRIPT>", annotated_transcript)
         if retrieved_text:
             retrieved_text
@@ -132,9 +135,9 @@ class TruthLabeler:
                 print("Error completing request:", e)
                 time.sleep(2)
         
-    def label_example(self, id, annotated_transcript, retrieval_query, results, num_tries=5, use_retrieval=False):
+    def label_example(self, id, annotated_transcript, correct_answer, retrieval_query, results, num_tries=5, use_retrieval=False):
         retrieved_text = "...\n...".join(self.retriever(retrieval_query)[0]) if use_retrieval else None
-        input, ann_count = TruthLabeler.make_input(annotated_transcript, retrieved_text)
+        input, ann_count = TruthLabeler.make_input(annotated_transcript, correct_answer, retrieved_text)
         if ann_count == 0:
             print("SKIPPING: no truth-apt statements")
             return
@@ -173,12 +176,12 @@ class TruthLabeler:
             responses.append(response)
 
         # Do retreival if more than half of the responses say they need wikipedia
-        if num_need_wiki / len(completion["choices"]) > 0.5 and not use_retrieval:
+        if num_need_wiki / len(completion["choices"]) > 0.5 and not use_retrieval and self.retriever is not None:
             self.label_example(id, annotated_transcript, retrieval_query, results, num_tries=num_tries, use_retrieval=True)
             # TODO: return, but for now let's not return because we want to see the effect of retrieval
 
-        if len(score_samples) == 0:
-            print("SKIPPING: no valid samples")
+        if len(score_samples) < 3:
+            print("SKIPPING: not enough valid samples")
             return
 
         # transpose the list of lists, so that each list contains the scores for a single annotation
@@ -205,7 +208,7 @@ class TruthLabeler:
         results.put(result)
         
 
-    def label(self, ids, annotated_transcripts, retrieval_queries, n_threads=10):
+    def label(self, ids, annotated_transcripts, correct_answers, retrieval_queries, n_threads=10):
         """
         ids: list of unique ids for each text
         annotated_transcripts: list of strings containing annotated transcripts:
@@ -216,7 +219,7 @@ class TruthLabeler:
         """
         results = queue.Queue()
         n_iters = (len(ids) // n_threads) * n_threads
-        iterator = islice(enumerate(zip(ids, annotated_transcripts, retrieval_queries)), n_iters)
+        iterator = islice(enumerate(zip(ids, annotated_transcripts, correct_answers, retrieval_queries)), n_iters)
 
         while True:
             threads = []
@@ -295,5 +298,5 @@ class TruthLabeler:
             "retrieval_prompt_template": RETRIEVAL_PROMPT_TEMPLATE,
             "score_list_template": SCORE_LIST_TEMPLATE,
             "options": OPTIONS,
-            **self.retriever.get_metadata(),
+            **(self.retriever.get_metadata() if self.retriever is not None else {}),
         }

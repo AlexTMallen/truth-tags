@@ -3,12 +3,14 @@ import torch
 import numpy as np
 import pandas as pd
 from typing import Iterable
+import re
 
 class AptTagger:
-    def __init__(self, model_name="data/apt-tagger-deberta-xlarge-mnli", device="cuda"):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForTokenClassification.from_pretrained(model_name).to(device)
-        self.device = device
+    def __init__(self, model_name=None, device="cuda"):
+        if model_name is not None:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForTokenClassification.from_pretrained(model_name).to(device)
+            self.device = device
 
     def tag(self, text, return_mask=True):
         """
@@ -23,9 +25,27 @@ class AptTagger:
             else:
                 raise ValueError(f"Expected string or  of strings, got {type(text)}")
         
-        probs, offset_mapping = self._predict(text)
-        preds_by_tok = probs.argmax(axis=-1).flatten()
-        tag_mask = self._tokens_to_chars(preds_by_tok, offset_mapping, text)
+        if not hasattr(self, "model"):            
+            tag_mask = np.zeros(len(text), dtype=int)
+
+            bullet_pattern = r"(\n|^)[().\d]+ *\w"
+            matches = re.finditer(bullet_pattern, text)
+            bullet_spans = [m.span() for m in matches]
+
+            pattern1 = r'[.!?;][\s\)}\]"\']|$'
+            matches = re.finditer(pattern1, text)
+            for match in matches:
+                # make sure it's not in bullet_spans
+                if not any([b[0] <= match.span()[0] <= b[1] for b in bullet_spans]):
+                    tag_mask[match.span()[0] - 1] = 1
+            pattern2 = r"[^.!?;\n'\"\)\]}]\n|[^.!?;\n'\"\)\]}]$"
+            matches = re.finditer(pattern2, text)
+            for match in matches:
+                tag_mask[match.span()[0]] = 1
+        else:
+            probs, offset_mapping = self._predict(text)
+            preds_by_tok = probs.argmax(axis=-1).flatten()
+            tag_mask = self._tokens_to_chars(preds_by_tok, offset_mapping, text)
         if return_mask:
             return tag_mask
         return self.mask_to_idxs(tag_mask)
