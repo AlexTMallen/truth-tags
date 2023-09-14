@@ -40,7 +40,7 @@ def load_accelerated_model_and_tokenizer(model_name, GPU_map=None, no_split_modu
     return model, tokenizer
 
 
-def get_val_scores(val_path="data/validation/12_val_labels.txt"):
+def get_val_scores(val_path="data/validation/21_val_labels.txt"):
     with open(val_path) as f:
         val_text = f.read()
 
@@ -56,7 +56,9 @@ def get_val_scores(val_path="data/validation/12_val_labels.txt"):
                 score_text = line[line.index(score_pattern) + len(score_pattern):]
                 if "#" in score_text:
                     score_text = score_text[:score_text.index("#")]
-                score_list.append(score_text.strip())
+                score_text = score_text.strip()
+                assert score_text in ["N/A", "Certainly True", "True", "Uncertain", "False", "Certainly False"]
+                score_list.append(score_text)
         scores.append(score_list)
     df = pd.DataFrame({"scores": scores}, index=message_ids)
     return df
@@ -71,21 +73,18 @@ def make_transcript(row, annotated=False):
     return text
 
 
-# split the text into conversations, stripping each of right whitespace and starting at "USER:"
 def split_convs(text):
-    convs = text.split("\n\nMESSAGE ")
-    convs = [c[c.index(f"\n\n{user_prefix}"):].strip() for c in convs]
+    convs = text.split("[[MESSAGE_ID]]")[1:]
+    convs = [c[c.index("[[INPUT_TEXT]]"):].strip() for c in convs]
     return convs
 
 
-def get_prompter_texts(text):
+def get_prev_messages(text):
     convs = split_convs(text)
     prompter_texts = []
     for conv in convs:
-        conv = conv.removeprefix(user_prefix)
-        end_loc = conv.index("\n\nASSISTANT:")
-        if end_loc == -1:
-            raise ValueError(f"No assistant text found in conversation: {conv}")
+        conv = conv[conv.index(user_prefix):]
+        end_loc = conv.rindex("\nASSISTANT:")
         conv = conv[:end_loc].strip()
         prompter_texts.append(conv)
     return prompter_texts
@@ -95,20 +94,19 @@ def get_assistant_texts(text):
     convs = split_convs(text)
     assistant_texts = []
     for conv in convs:
-        t = conv[conv.index("\n\nASSISTANT:") + len("\n\nASSISTANT:"):].strip()
-        if t.endswith("[NOT YET ANNOTATED]"):
-            t = t[:-len("[NOT YET ANNOTATED]")].strip()
+        t = conv[conv.index("\n\nASSISTANT:") + len("\n\nASSISTANT:"):]
+        t = t[:t.index("\n###")].strip()
         assistant_texts.append(t)
     return assistant_texts
 
 
 def get_message_ids(text):
-    # e.g. MESSAGE 60cee540-2198-4ebd-8758-c4fd36a6d9e1
-    convs = text.split("\n\nMESSAGE ")
+    # e.g. [[MESSAGE_ID]] 60cee540-2198-4ebd-8758-c4fd36a6d9e1
+    convs = text.split("[[MESSAGE_ID]]")
     message_ids = []
     for conv in convs:
-        conv = conv.removeprefix("MESSAGE ")
-        prompter_idx = conv.index(f"\n\n{user_prefix}")
+        conv = conv.removeprefix("[[MESSAGE_ID]]")
+        prompter_idx = conv.index(f"\n")
         message_ids.append(conv[:prompter_idx].strip())
     return message_ids
 

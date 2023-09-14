@@ -177,10 +177,7 @@ Again, I apologize if my earlier response was incorrect[[7]]. If you have any fu
 
 [[TRANSCRIPT]] <TRANSCRIPT>
 
-[[CORRECT ANSWER]] <CORRECT_ANSWER>
-
-[[BRIEF SUMMARY]]
-"""
+[[CORRECT ANSWER]] <CORRECT_ANSWER>"""
 PROMPT_TEMPLATE = PROMPT_TEMPLATE.replace("<RATINGS>", "\"" + "\", \"".join(OPTIONS) + "\"")
 
 RETRIEVAL_PROMPT_TEMPLATE = \
@@ -241,7 +238,9 @@ class TruthLabeler:
                 "Determinable - Certainly False": 0,
             }
         assert all(score in PROMPT_TEMPLATE for score in self.score_to_p_apt.keys())
-        self.logit_bias = {self.tokenizer.encode(" Unc")[0]: uncertainty_bias, self.tokenizer.encode(" N")[0]: na_bias}
+        self.logit_bias = {self.tokenizer.encode(" Unc")[0]: uncertainty_bias,
+                           self.tokenizer.encode(" Certainly")[0]: -uncertainty_bias,
+                           self.tokenizer.encode(" N")[0]: na_bias}
         self.stop_seq = "[[TRANSCRIPT]] "
         self.total_cost = 0
         self.retriever = retriever
@@ -266,7 +265,7 @@ class TruthLabeler:
             input = input.replace("<WIKI>", retrieved_text)
         return input, ann_count
     
-    def get_completion(self, input, max_new_tokens=100, num_tries=5):
+    def get_completion(self, input, max_new_tokens=100, num_tries=10):
         for i in range(num_tries):
             try:
                 if i > 0:
@@ -371,13 +370,16 @@ class TruthLabeler:
                  ASSISTANT: This is correct[[1]], penguins are birds[[2]]."
         """
         results = queue.Queue()
-        n_iters = (len(ids) // n_threads) * n_threads
+        n_iters = len(ids)
         iterator = islice(enumerate(zip(ids, annotated_transcripts, correct_answers, retrieval_queries)), n_iters)
 
         while True:
             threads = []
             for _ in range(n_threads):
-                i, args = next(iterator)
+                try:
+                    i, args = next(iterator)
+                except StopIteration:
+                    break
                 t = threading.Thread(target=self.label_example, args=(*args, results))
                 threads.append(t)
                 t.start()
