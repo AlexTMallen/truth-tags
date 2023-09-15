@@ -113,7 +113,7 @@ The most appropriate response to this question would be (D) check in an objectiv
 [[1]] N/A
 [[2]] N/A
 [[3]] Determinable - Certainly True
-[[4]] Determinable - Certainly True
+[[4]] Determinable - True
 [[5]] Determinable - True
 
 
@@ -137,9 +137,9 @@ ASSISTANT: Oh, wow[[1]]! *excited noise* I love learning about diseases[[2]]! *s
 [[2]] N/A
 [[3]] N/A
 [[4]] Determinable - Certainly False
-[[5]] Determinable - Certainly True
+[[5]] Determinable - True
 [[6]] Determinable - False
-[[7]] Determinable - Certainly True
+[[7]] Determinable - True
 [[8]] N/A
 
 
@@ -169,7 +169,7 @@ Again, I apologize if my earlier response was incorrect[[7]]. If you have any fu
 [[2]] Determinable - Certainly True
 [[3]] Determinable - True
 [[4]] Determinable - Uncertain
-[[5]] Determinable - Certainly True
+[[5]] Determinable - True
 [[6]] Determinable - Certainly False
 [[7]] Determinable - False
 [[8]] N/A
