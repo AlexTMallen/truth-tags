@@ -9,14 +9,14 @@ from argparse import ArgumentParser
 import torch.multiprocessing as mp
 import random
 import numpy as np
-from prompt_processing import templatize_mmlu
+from prompt_processing import templatize_mmlu, templatize_sharegpt
 from utils import load_accelerated_model_and_tokenizer
 
 seed = 633
 random.seed(seed)
 np.random.seed(seed)
 
-SAVE_FORMAT = "data/generated-responses/rank_{rank}_{i}_transcripts_mmlu_{model_str}.json"
+SAVE_FORMAT = "data/generated-responses/rank_{rank}_{i}_transcripts_{ds_name}_{model_str}.json"
 VICUNA_PREFIX = "A chat between a curious human and an artificial intelligence assistant. " \
                 "The assistant gives helpful, detailed, and polite answers to the human's questions."
 LLAMA_SYSTEM_PROMPT = "You are a helpful, respectful and honest assistant. Always answer as helpfully " \
@@ -27,7 +27,7 @@ LLAMA_SYSTEM_PROMPT = "You are a helpful, respectful and honest assistant. Alway
                       "why instead of answering something not correct. If you don't know the answer "\
                       "to a question, please don't share false information."
 
-def main_worker(rank, model_name, devices_by_rank, dfs_by_rank, resume_from):
+def main_worker(rank, ds_name, model_name, devices_by_rank, dfs_by_rank, resume_from):
     df = dfs_by_rank[rank]
     del dfs_by_rank
     
@@ -67,8 +67,8 @@ def main_worker(rank, model_name, devices_by_rank, dfs_by_rank, resume_from):
                 
             prev_messages = row["prev_messages"]
             msgs = []
-            for i, msg in list(enumerate(prev_messages)):  # 0 is least recent
-                template = prompter_template if i % 2 == 0 else assistant_template
+            for j, msg in list(enumerate(prev_messages)):  # 0 is least recent
+                template = prompter_template if j % 2 == 0 else assistant_template
                 msgs.append(template.format(msg))
             transcript = "".join(msgs)
             prompt = prefix + transcript + assistant_prefix
@@ -113,18 +113,22 @@ def main_worker(rank, model_name, devices_by_rank, dfs_by_rank, resume_from):
             if i % step == 0 or i == len(df) - 1:
                 results_df = pd.DataFrame.from_dict(results)
                 model_str = model_name.replace("/", "_")
-                new_file = SAVE_FORMAT.format(rank=rank, i=i, model_str=model_str)
+                new_file = SAVE_FORMAT.format(rank=rank, i=i, model_str=model_str, ds_name=ds_name)
                 new_file = new_file + f"_resumed_from_{resume_from}" if resume_from > 0 else new_file
                 results_df.to_json(new_file, orient="records")
-                prev_file = SAVE_FORMAT.format(rank=rank, i=i - step, model_str=model_str)
+                prev_file = SAVE_FORMAT.format(rank=rank, i=i - step, model_str=model_str, ds_name=ds_name)
                 prev_file = prev_file + f"_resumed_from_{resume_from}" if resume_from > 0 else prev_file    
                 if os.path.exists(prev_file):
                     os.remove(prev_file)
 
 
-def main(model_family, num_parameters, devices, n_examples, resume_from):
-    # load dataset from local jsonl
-    df = templatize_mmlu(n_examples=n_examples, subj_balanced=False)
+def main(dataset_name, model_family, num_parameters, devices, n_examples, resume_from):
+    if dataset_name == "mmlu":
+        df = templatize_mmlu(n_examples=n_examples, subj_balanced=False)
+    elif dataset_name == "sharegpt":
+        df = templatize_sharegpt(n_examples=n_examples)
+    else:
+        raise NotImplementedError
     gpus_needed_per_model = {"7b": 1, "13b": 2, "70b": 6}[num_parameters]
     if len(devices) % gpus_needed_per_model != 0:
         raise ValueError(f"Number of devices ({len(devices)}) is not a multiple of the number of GPUs needed per model ({gpus_needed_per_model})")
@@ -137,28 +141,29 @@ def main(model_family, num_parameters, devices, n_examples, resume_from):
     else:
         raise NotImplementedError
 
-    mp.spawn(main_worker, args=(model_name, devices_by_rank, dfs_by_rank, resume_from), nprocs=len(devices_by_rank), join=True)
+    mp.spawn(main_worker, args=(dataset_name, model_name, devices_by_rank, dfs_by_rank, resume_from), nprocs=len(devices_by_rank), join=True)
 
     # join results
     results = []
     for rank in range(len(devices_by_rank)):
         name = model_name.replace("/", "_")
-        fname = SAVE_FORMAT.format(rank=rank, i=len(dfs_by_rank[rank]), model_str=name)
+        fname = SAVE_FORMAT.format(rank=rank, i=len(dfs_by_rank[rank]), model_str=name, ds_name=dataset_name)
         fname = fname + f"_resumed_from_{resume_from}" if resume_from > 0 else fname
         results.append(pd.read_json(fname))
     
     # merge with previous results if resuming
     if resume_from > 0:
-        results.append(SAVE_FORMAT.format(rank="all", i=resume_from, model_str=name))
+        results.append(SAVE_FORMAT.format(rank="all", i=resume_from, model_str=name, ds_name=dataset_name))
     results = pd.concat(results)
-    results.to_json(SAVE_FORMAT.format(rank="all", i=n_examples, model_str=name), orient="records")
+    results.to_json(SAVE_FORMAT.format(rank="all", i=n_examples, model_str=name, ds_name=dataset_name), orient="records")
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+    parser.add_argument("--dataset", type=str, default="mmlu")
     parser.add_argument("--model-family", type=str, default="meta-llama")
     parser.add_argument("--n-parameters", type=str, default="7b")
     parser.add_argument("--devices", type=int, nargs="+", default=[4, 5, 6, 7], required=False)
     parser.add_argument("--n-examples", type=int, default=None)
     parser.add_argument("--resume-from", type=int, default=0)
     args = parser.parse_args()
-    main(args.model_family, args.n_parameters, args.devices, args.n_examples, args.resume_from)
+    main(args.dataset, args.model_family, args.n_parameters, args.devices, args.n_examples, args.resume_from)

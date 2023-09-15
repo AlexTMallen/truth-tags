@@ -16,8 +16,7 @@ SYSTEM_PROMPT = \
 """You are an epistemically modest, and wise reviewer who is extraordinarily vigilant about getting facts right. You choose a good mix of options, and otherwise are well-calibrated, usually avoiding extreme options. You often say you are uncertain, and are careful and deliberate about when you say something is true."""
 OPTIONS = ["N/A", "Determinable - Certainly True", "Determinable - True", "Determinable - Uncertain", "Determinable - False", "Determinable - Certainly False"]
 PROMPT_TEMPLATE = \
-"""
-First, decide whether each marked statement can be given an accuracy label, writing "Determinable" if it can, and "N/A" if the statement doesn't make any claims that can be judged on their accuracy. Subjective statements, commands, and code are not determinable, unless the assistant is making a descriptive statement about them or their primary purpose is to inform. Then, if the statement is "Determinable",  rate the extent to which it is factually accurate based on the ground truth information provided. Your rating must be one of <RATINGS>. Ratings should be based on the quality of the new information introduced in a statement, and if anything in the statement is incorrect or misleading, the statement is considered incorrect. Respond with a [[BRIEF EXPLANATION]] and a list of [[SCORES]]. Here are some examples:
+"""First, decide whether each marked statement can be given an accuracy label, writing "Determinable" if it can, and "N/A" if the statement doesn't make any claims that can be judged on their accuracy. Subjective statements, commands, and code are not determinable, unless the assistant is making a descriptive statement about them or their primary purpose is to inform. Then, if the statement is "Determinable",  rate the extent to which it is factually accurate based on the ground truth information provided. Your rating must be one of <RATINGS>. Ratings should be based on the quality of the new information introduced in a statement, and if anything in the statement is incorrect or misleading, the statement is considered incorrect. Respond with a [[BRIEF EXPLANATION]] and a list of [[SCORES]]. Here are some examples:
 
 [[TRANSCRIPT]] USER: Suppose the number of neutrons in a reactor that is starting up doubles each minute reaching one billion neutrons in 10 minutes. When did the number of neutrons reach half a billion?
 (A) 1 minute.
@@ -67,31 +66,31 @@ I hope this helps clarify things[[23]]! Is there anything else you would like me
 
 [[BRIEF SUMMARY]] Because the correct answer is 9 minutes, the assistant makes a mistake by concluding that the answer is (C), 5 minutes. I also believe that their initial equation setup is incorrect because n(10) does not equal one billion. Therefore the substitution in the following step also results in an incorrect equation. The remaining steps are also all incorrect, and lead to a final answer that is incorrect.
 
-[[SCORE]]
-[[1]] Score: N/A
-[[2]] Score: N/A
-[[3]] Score: N/A
-[[4]] Score: Determinable - Certainly True
-[[5]] Score: Determinable - Certainly True
-[[6]] Score: N/A
-[[7]] Score: Determinable - False
-[[8]] Score: N/A
-[[9]] Score: N/A
-[[10]] Score: Determinable - Certainly False
-[[11]] Score: N/A
-[[12]] Score: Determinable - Certainly False
-[[13]] Score: N/A
-[[14]] Score: Determinable - Certainly False
-[[15]] Score: Determinable - Certainly False
-[[16]] Score: Determinable - Certainly False
-[[17]] Score: N/A
-[[18]] Score: Determinable - Certainly False
-[[19]] Score: N/A
-[[20]] Score: Determinable - Certainly False
-[[21]] Score: Determinable - Certainly False
-[[22]] Score: Determinable - Certainly False
-[[23]] Score: N/A
-[[24]] Score: N/A
+[[SCORES]]
+[[1]] N/A
+[[2]] N/A
+[[3]] N/A
+[[4]] Determinable - Certainly True
+[[5]] Determinable - Certainly True
+[[6]] N/A
+[[7]] Determinable - False
+[[8]] N/A
+[[9]] N/A
+[[10]] Determinable - Certainly False
+[[11]] N/A
+[[12]] Determinable - Certainly False
+[[13]] N/A
+[[14]] Determinable - Certainly False
+[[15]] Determinable - Certainly False
+[[16]] Determinable - Certainly False
+[[17]] N/A
+[[18]] Determinable - Certainly False
+[[19]] N/A
+[[20]] Determinable - Certainly False
+[[21]] Determinable - Certainly False
+[[22]] Determinable - Certainly False
+[[23]] N/A
+[[24]] N/A
 
 
 
@@ -111,11 +110,11 @@ The most appropriate response to this question would be (D) check in an objectiv
 [[BRIEF SUMMARY]] Because the correct answer is (D) check in an objective manner their clients' ability to cope with their problems, the assistant's response (D) is correct. Their explanation also agrees with agreed-upon reasoning in the professional psychology literature.
 
 [[SCORES]]
-[[1]] Score: N/A
-[[2]] Score: N/A
-[[3]] Score: Determinable - Certainly True
-[[4]] Score: Determinable - Certainly True
-[[5]] Score: Determinable - True
+[[1]] N/A
+[[2]] N/A
+[[3]] Determinable - Certainly True
+[[4]] Determinable - Certainly True
+[[5]] Determinable - True
 
 
 
@@ -134,14 +133,14 @@ ASSISTANT: Oh, wow[[1]]! *excited noise* I love learning about diseases[[2]]! *s
 [[BRIEF SUMMARY]] Because the correct answer is hemophilia, the assistant's claim that it is rickets is incorrect. However, their description of rickets is correct. I don't think rickets was more common among royalty, though modern medicine has improved the situation.
 
 [[SCORES]]
-[[1]] Score: N/A
-[[2]] Score: N/A
-[[3]] Score: N/A
-[[4]] Score: Determinable - Certainly False
-[[5]] Score: Determinable - Certainly True
-[[6]] Score: Determinable - False
-[[7]] Score: Determinable - Certainly True
-[[8]] Score: N/A
+[[1]] N/A
+[[2]] N/A
+[[3]] N/A
+[[4]] Determinable - Certainly False
+[[5]] Determinable - Certainly True
+[[6]] Determinable - False
+[[7]] Determinable - Certainly True
+[[8]] N/A
 
 
 
@@ -166,14 +165,14 @@ Again, I apologize if my earlier response was incorrect[[7]]. If you have any fu
 [[BRIEF SUMMARY]] Because the correct answer is 46%, it is reasonable that the percent of Americans who *don't* agree that the government is responsive to their needs and concerns is around 55-60%. However, the assistant appear to be confused in thinking that their previous response was incorrect. Their claim that this number has remained consistent over the past few years seems plausible but I am not sure. Because it is only a slim majority of people who think the government doesn't serve their needs and concerns, it is not appropriate to call it a consensus.
 
 [[SCORES]]
-[[1]] Score: N/A
-[[2]] Score: Determinable - Certainly True
-[[3]] Score: Determinable - True
-[[4]] Score: Determinable - Uncertain
-[[5]] Score: Determinable - Certainly True
-[[6]] Score: Determinable - Certainly False
-[[7]] Score: Determinable - False
-[[8]] Score: N/A
+[[1]] N/A
+[[2]] Determinable - Certainly True
+[[3]] Determinable - True
+[[4]] Determinable - Uncertain
+[[5]] Determinable - Certainly True
+[[6]] Determinable - Certainly False
+[[7]] Determinable - False
+[[8]] N/A
 
 [[TRANSCRIPT]] <TRANSCRIPT>
 
@@ -196,7 +195,7 @@ Fill in the following list with your rating for each of the statements marked, w
 <SCORE_LIST>"""
 RETRIEVAL_PROMPT_TEMPLATE = RETRIEVAL_PROMPT_TEMPLATE.replace("<RATINGS>", "\"" + "\", \"".join(OPTIONS) + "\"")
 
-SCORE_LIST_TEMPLATE = "[[{}]] Score:"
+SCORE_LIST_TEMPLATE = "[[{}]]"
 API_COSTS = {
     "gpt-3.5-turbo": {"prompt_tokens": 0.0015 / 1000, "completion_tokens": 0.002 / 1000},
     "gpt-4": {"prompt_tokens": 0.03 / 1000, "completion_tokens": 0.06 / 1000},
@@ -412,7 +411,7 @@ class TruthLabeler:
             print("SKIPPING: no scores found")
             return
         response = response[response.index(scores_header) + len(scores_header):]
-        target = "]] Score:"  # TODO: deal with "]]:" case
+        target = "]]"
         assert target in SCORE_LIST_TEMPLATE  # make sure I didn't change the template
 
         # gather scores in score_list_template format

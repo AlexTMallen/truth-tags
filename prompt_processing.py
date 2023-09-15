@@ -3,6 +3,7 @@ from datasets import load_dataset
 import numpy as np
 import pandas as pd
 from hashlib import md5
+import json
 
 seed = 633
 random.seed(seed)
@@ -117,7 +118,7 @@ def templatize_mmlu(n_examples=None, subj_balanced=False):
         # split into turns
         turns = raw_text.split(" <|turn_sep|> ")
         assert len(turns) % 2 == 1  # it should always start and end with the prompter
-        example["prev_messages"] = turns
+        example["prev_messages"] = turns  # first turn is the oldest message
         example["template_name"] = template_name
         return example
     
@@ -127,3 +128,45 @@ def templatize_mmlu(n_examples=None, subj_balanced=False):
 
     return df
         
+def templatize_sharegpt(n_examples=None):
+    with open("data/natural/sharegpt_20230401_clean_en.json", "r") as f:
+        sharegpt = json.load(f)
+
+    np.random.shuffle(sharegpt)
+    n_examples = len(sharegpt) if n_examples is None else n_examples
+    sharegpt = sharegpt[:n_examples]
+
+    rows = []
+    for example in sharegpt:
+        id = example["id"]
+        conversation = example["conversations"]
+        if not conversation or conversation[0]["from"] != "human":
+            continue
+        for i, message in enumerate(conversation):
+            role = message['from']
+        
+            if role == "human":
+                rows.append({
+                    "parent_id": id,
+                    "prev_messages": [m["value"] for m in conversation[:i + 1]]  # first msg is oldest
+                })
+
+    np.random.shuffle(rows)
+    df = pd.DataFrame(rows)
+    df["role"] = "prompter"
+    df["template_name"] = "null"
+    df["subject"] = "null"
+    df["answer"] = "null"
+    df["correct_answer"] = "null"
+    df["random_incorrect_answer"] = "null"
+    df["random_other_subject"] = "null"
+    df["A"] = "null"
+    df["B"] = "null"
+    df["C"] = "null"
+    df["D"] = "null"
+    df["mcq"] = "null"
+    df["question"] = "null"
+    df["choices"] = "null"
+    df["split"] = "sharegpt"
+    return df
+
