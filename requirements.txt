@@ -6,3 +6,4 @@ seaborn
 numpy
 torch
 accelerate
+openai
